@@ -52,10 +52,13 @@ Key environment variables:
 | `POSTGRES_USER` | PostgreSQL superuser username | `postgres` |
 | `POSTGRES_PASSWORD` | PostgreSQL superuser password | `postgres` |
 | `POSTGRES_DB` | PostgreSQL database name | `leadflow` |
+| `POSTGRES_PORT` | PostgreSQL host port (Docker) | `5433` |
+| `BACKEND_PORT` | Backend host port (Docker) | `8001` |
+| `FRONTEND_PORT` | Frontend host port (Docker) | `3001` |
 | `DATABASE_URL` | SQLAlchemy connection string | `postgresql+psycopg2://postgres:postgres@localhost:5432/leadflow` |
 | `APP_ENV` | Application environment mode | `development` |
-| `CORS_ORIGINS` | Allowed CORS origins for backend API | `http://localhost:3000,http://127.0.0.1:3000` |
-| `NEXT_PUBLIC_API_URL` | Browser-accessible backend API URL | `http://localhost:8000` |
+| `CORS_ORIGINS` | Allowed CORS origins for backend API | `http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001` |
+| `NEXT_PUBLIC_API_URL` | Browser-accessible backend API URL | `http://localhost:8001` (Docker) / `http://localhost:8000` (Local) |
 
 ---
 
@@ -124,9 +127,9 @@ Run the entire stack (PostgreSQL, FastAPI backend, and Next.js frontend) using D
    ```
 
 4. Access the application:
-   - **Frontend UI**: `http://localhost:3000`
-   - **Backend API**: `http://localhost:8000`
-   - **API Docs**: `http://localhost:8000/docs`
+   - **Frontend UI**: `http://localhost:3001`
+   - **Backend API**: `http://localhost:8001`
+   - **API Docs**: `http://localhost:8001/docs`
 
 5. Stop all services and preserve data volume:
    ```bash
