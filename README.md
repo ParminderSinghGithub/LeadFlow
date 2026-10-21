@@ -1,204 +1,185 @@
-# LeadFlow - Single-Screen Lead Management CRM
+# LeadFlow
 
-LeadFlow is a clean, minimal full-stack lead management CRM designed for speed and simplicity. It allows sales and account managers to track leads, maintain chronological discussion logs, and stay ahead of follow-up commitments.
+## 1. Project Overview
+
+LeadFlow is a lightweight, single-screen lead management CRM built as a coding assessment for PravarAI's AI-smart full-stack internship. It allows sales representatives to track leads, record discussion history, update lead status, and schedule follow-up reminders.
 
 ---
 
-## Tech Stack
+## 2. Features
 
-- **Frontend**: Next.js (App Router), TypeScript, React, Tailwind CSS
-- **Backend**: FastAPI, Python 3.10+, Pydantic v2
+- **Single-Screen CRM Interface**: Clean, compact desktop and mobile workflow inspired by the assessment wireframes.
+- **Lead Management**: Create leads with name, company, and phone. Default status begins at `New`.
+- **Status Pipeline**: Six validated lifecycle stages: `New`, `Contacted`, `Qualified`, `Proposal Sent`, `Won`, `Lost`.
+- **Discussion History**: Reverse-chronological timeline of interactions with timestamps and relative time indicators.
+- **Follow-up Reminders**: Schedule follow-up dates and times. Reminders scheduled for the current calendar day are grouped in a dedicated highlighted section. Overdue reminders are highlighted in red.
+- **Filtering & Search**: Server-side filtering by status chips and instant case-insensitive lead name search.
+- **Database Migrations & Seed Data**: Schema versioning with Alembic and an idempotent seed script.
+
+---
+
+## 3. Tech Stack
+
+- **Frontend**: Next.js 14 (App Router), TypeScript, React 18, Tailwind CSS, Lucide React
+- **Backend**: FastAPI, Python 3.12, Pydantic v2, Uvicorn
 - **Database & ORM**: PostgreSQL, SQLAlchemy 2.0
 - **Migrations**: Alembic
 - **Testing**: pytest, HTTPX
-- **Containerization**: Docker Compose (scheduled for upcoming commit)
+- **Containerization**: Docker Compose (PostgreSQL, FastAPI backend, Next.js frontend)
 
 ---
 
-## Repository Structure
+## 4. Prerequisites
 
-```text
-PravarAI-LeadFlow/
-├── backend/
-│   ├── alembic/
-│   │   ├── versions/
-│   │   │   └── 2026_10_21_0001_initial_schema.py
-│   │   ├── env.py
-│   │   └── script.py.mako
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── config.py
-│   │   ├── database.py
-│   │   ├── models.py
-│   │   ├── schemas.py
-│   │   └── main.py
-│   ├── tests/
-│   │   ├── __init__.py
-│   │   ├── conftest.py
-│   │   ├── test_health.py
-│   │   └── test_models.py
-│   ├── alembic.ini
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   └── app/
-│   │       ├── globals.css
-│   │       ├── layout.tsx
-│   │       └── page.tsx
-│   ├── next.config.mjs
-│   ├── package.json
-│   ├── postcss.config.js
-│   ├── tailwind.config.ts
-│   └── tsconfig.json
-├── .env.example
-├── .gitignore
-└── README.md
+- **Python**: 3.10+ (tested on Python 3.12)
+- **Node.js**: 18+ (tested on Node.js 22 and npm 10)
+- **Database / Docker**: PostgreSQL 15+ locally or Docker Desktop with Docker Compose v2+
+
+---
+
+## 5. Environment Configuration
+
+Copy `.env.example` to `.env` in the root directory:
+
+```bash
+cp .env.example .env
 ```
 
----
+Key environment variables:
 
-## Data Model (Commit 1)
-
-### 1. `Lead` Entity
-- `id`: Integer primary key (autoincrement)
-- `name`: Required non-empty string (`varchar(255)`)
-- `company`: Optional string (`varchar(255)`)
-- `phone`: Optional string (`varchar(50)`)
-- `status`: Required string (`varchar(50)`), defaults to `New`. Allowed values:
-  - `New`, `Contacted`, `Qualified`, `Proposal Sent`, `Won`, `Lost`
-  - Validated via Pydantic enum and database check constraint `ck_leads_status`
-- `next_follow_up_at`: Nullable timezone-aware datetime (`timestamptz`), indexed
-- `created_at`: Timezone-aware timestamp (`timestamptz`), defaults to `now()`
-- `updated_at`: Timezone-aware timestamp (`timestamptz`), updated on modification
-
-### 2. `Discussion` Entity
-- `id`: Integer primary key (autoincrement)
-- `lead_id`: Foreign key to `leads.id` with `ON DELETE CASCADE`
-- `note`: Required non-empty text (`text`), validated with check constraint `ck_discussions_note_non_empty`
-- `created_at`: Timezone-aware timestamp (`timestamptz`), defaults to `now()`
-- `follow_up_at`: Nullable timezone-aware datetime (`timestamptz`)
+| Variable | Description | Default (Local / Docker) |
+| :--- | :--- | :--- |
+| `POSTGRES_USER` | PostgreSQL superuser username | `postgres` |
+| `POSTGRES_PASSWORD` | PostgreSQL superuser password | `postgres` |
+| `POSTGRES_DB` | PostgreSQL database name | `leadflow` |
+| `DATABASE_URL` | SQLAlchemy connection string | `postgresql+psycopg2://postgres:postgres@localhost:5432/leadflow` |
+| `APP_ENV` | Application environment mode | `development` |
+| `CORS_ORIGINS` | Allowed CORS origins for backend API | `http://localhost:3000,http://127.0.0.1:3000` |
+| `NEXT_PUBLIC_API_URL` | Browser-accessible backend API URL | `http://localhost:8000` |
 
 ---
 
-## REST API Endpoints (Commit 2)
-
-All API endpoints are prefixed with `/api`.
-
-| Method | Endpoint | Description | Query / Body |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/health` | System health check | None |
-| `GET` | `/api/leads` | List leads with latest discussion | `?status=Qualified&search=Acme` |
-| `POST` | `/api/leads` | Create a new lead | `{"name": "...", "company": "...", "phone": "..."}` |
-| `GET` | `/api/leads/{id}` | Lead detail with full discussion timeline | None |
-| `PATCH` | `/api/leads/{id}/status` | Update lead status | `{"status": "Contacted"}` |
-| `POST` | `/api/leads/{id}/discussions` | Add discussion note (optional follow-up) | `{"note": "...", "follow_up_at": "..."}` |
-
-### Example Request Bodies
-
-#### 1. Create a Lead (`POST /api/leads`)
-```json
-{
-  "name": "Jane Doe",
-  "company": "Acme Corp",
-  "phone": "+1-555-0199"
-}
-```
-
-#### 2. Update Lead Status (`PATCH /api/leads/{id}/status`)
-Allowed statuses: `New`, `Contacted`, `Qualified`, `Proposal Sent`, `Won`, `Lost`
-```json
-{
-  "status": "Qualified"
-}
-```
-
-#### 3. Add Discussion with Scheduled Follow-up (`POST /api/leads/{id}/discussions`)
-> **Note**: Providing `follow_up_at` atomically updates the lead's `next_follow_up_at`. Omitting `follow_up_at` leaves any existing scheduled follow-up unchanged. Datetimes must be timezone-aware (ISO 8601).
-```json
-{
-  "note": "Client requested pricing proposal. Follow-up demo call arranged.",
-  "follow_up_at": "2026-10-25T14:30:00Z"
-}
-```
-
----
-
-### Prerequisites
-- Python 3.10+
-- Node.js 18+ and npm
-- PostgreSQL (or local Docker PostgreSQL)
-
----
+## 6. Run Locally
 
 ### Backend Setup
 
-1. **Navigate to the backend directory**:
-   ```bash
+1. Navigate to `backend/` and create a virtual environment:
+   ```powershell
    cd backend
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
    ```
+   *(On macOS/Linux: `source .venv/bin/activate`)*
 
-2. **Create and activate a virtual environment**:
-   ```bash
-   # Windows (PowerShell)
-   python -m venv venv
-   .\venv\Scripts\Activate.ps1
-
-   # Linux/macOS
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies**:
+2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Configure environment variables**:
-   Create a `.env` file in the root or `backend/` directory (refer to `.env.example`):
-   ```env
-   DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/leadflow
-   APP_ENV=development
-   CORS_ORIGINS=http://localhost:3000
-   ```
-
-5. **Run database migrations**:
+3. Run database migrations:
    ```bash
    alembic upgrade head
    ```
 
-6. **Start the FastAPI development server**:
+4. Start the FastAPI development server:
    ```bash
    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    ```
    - API Docs: `http://localhost:8000/docs`
    - Health Check: `http://localhost:8000/health`
 
-7. **Run tests**:
-   ```bash
-   pytest -v
-   ```
-
----
-
 ### Frontend Setup
 
-1. **Navigate to the frontend directory**:
+1. In a separate terminal, navigate to `frontend/`:
    ```bash
    cd frontend
-   ```
-
-2. **Install Node dependencies**:
-   ```bash
    npm install
    ```
 
-3. **Start the Next.js development server**:
+2. Start the Next.js development server:
    ```bash
    npm run dev
    ```
    Open `http://localhost:3000` in your browser.
 
-4. **Build production bundle**:
+---
+
+## 7. Run with Docker Compose
+
+Run the entire stack (PostgreSQL, FastAPI backend, and Next.js frontend) using Docker Compose:
+
+1. Build and start all three services in detached mode:
    ```bash
-   npm run build
+   docker compose up --build -d
    ```
+
+2. Verify that all containers are healthy and running:
+   ```bash
+   docker compose ps
+   ```
+
+3. View live container logs:
+   ```bash
+   docker compose logs -f
+   ```
+
+4. Access the application:
+   - **Frontend UI**: `http://localhost:3000`
+   - **Backend API**: `http://localhost:8000`
+   - **API Docs**: `http://localhost:8000/docs`
+
+5. Stop all services and preserve data volume:
+   ```bash
+   docker compose down
+   ```
+
+*(To stop and remove database volumes, use `docker compose down -v`)*
+
+---
+
+## 8. Seed Demo Data
+
+The seed script creates 6 realistic fictional leads across all six statuses, multiple discussions, a follow-up scheduled for today, and an overdue follow-up. It is idempotent and safe to run multiple times.
+
+### Run Seed Locally:
+```powershell
+cd backend
+.\.venv\Scripts\python -m app.seed
+```
+
+### Run Seed in Docker Compose:
+```bash
+docker compose exec backend python -m app.seed
+```
+
+---
+
+## 9. Run Tests
+
+Execute the backend integration test suite:
+
+### Local:
+```powershell
+cd backend
+.\.venv\Scripts\pytest -v
+```
+
+### Docker Compose:
+```bash
+docker compose exec backend pytest -v
+```
+
+---
+
+## 10. API Endpoint Summary
+
+All application endpoints are served under `/api` (system health is under `/health`).
+
+| Method | Endpoint | Description | Request Body / Parameters |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/health` | Health check endpoint | None |
+| `GET` | `/api/leads` | List leads with latest discussion and scheduled follow-up | Optional query params: `?status=...&search=...` |
+| `POST` | `/api/leads` | Create a new lead (defaults to `New` status) | `{"name": "...", "company": "...", "phone": "..."}` |
+| `GET` | `/api/leads/{id}` | Retrieve lead detail and full discussion timeline (newest first) | None |
+| `PATCH` | `/api/leads/{id}/status` | Update lead status (`New`, `Contacted`, `Qualified`, `Proposal Sent`, `Won`, `Lost`) | `{"status": "..."}` |
+| `POST` | `/api/leads/{id}/discussions` | Add discussion note; atomically updates lead `next_follow_up_at` if follow-up included | `{"note": "...", "follow_up_at": "ISO-8601"}` |
