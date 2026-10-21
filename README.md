@@ -80,7 +80,48 @@ PravarAI-LeadFlow/
 
 ---
 
-## Local Development Setup
+## REST API Endpoints (Commit 2)
+
+All API endpoints are prefixed with `/api`.
+
+| Method | Endpoint | Description | Query / Body |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/health` | System health check | None |
+| `GET` | `/api/leads` | List leads with latest discussion | `?status=Qualified&search=Acme` |
+| `POST` | `/api/leads` | Create a new lead | `{"name": "...", "company": "...", "phone": "..."}` |
+| `GET` | `/api/leads/{id}` | Lead detail with full discussion timeline | None |
+| `PATCH` | `/api/leads/{id}/status` | Update lead status | `{"status": "Contacted"}` |
+| `POST` | `/api/leads/{id}/discussions` | Add discussion note (optional follow-up) | `{"note": "...", "follow_up_at": "..."}` |
+
+### Example Request Bodies
+
+#### 1. Create a Lead (`POST /api/leads`)
+```json
+{
+  "name": "Jane Doe",
+  "company": "Acme Corp",
+  "phone": "+1-555-0199"
+}
+```
+
+#### 2. Update Lead Status (`PATCH /api/leads/{id}/status`)
+Allowed statuses: `New`, `Contacted`, `Qualified`, `Proposal Sent`, `Won`, `Lost`
+```json
+{
+  "status": "Qualified"
+}
+```
+
+#### 3. Add Discussion with Scheduled Follow-up (`POST /api/leads/{id}/discussions`)
+> **Note**: Providing `follow_up_at` atomically updates the lead's `next_follow_up_at`. Omitting `follow_up_at` leaves any existing scheduled follow-up unchanged. Datetimes must be timezone-aware (ISO 8601).
+```json
+{
+  "note": "Client requested pricing proposal. Follow-up demo call arranged.",
+  "follow_up_at": "2026-10-25T14:30:00Z"
+}
+```
+
+---
 
 ### Prerequisites
 - Python 3.10+

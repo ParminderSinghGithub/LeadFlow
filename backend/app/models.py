@@ -38,7 +38,7 @@ class Lead(Base):
         back_populates="lead",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        order_by="desc(Discussion.created_at)",
+        order_by="desc(Discussion.created_at), desc(Discussion.id)",
     )
 
     __table_args__ = (
